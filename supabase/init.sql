@@ -1,0 +1,320 @@
+-- ============================================================================
+-- Gowri Toys - Attendance Management System
+-- Single bootstrap migration. Fully idempotent: safe to run on every app start.
+-- ============================================================================
+
+create extension if not exists "pgcrypto";
+
+-- ---------------------------------------------------------------------------
+-- Profiles (extends auth.users)
+-- ---------------------------------------------------------------------------
+create table if not exists public.profiles (
+  id uuid primary key references auth.users (id) on delete cascade,
+  full_name text not null default '',
+  email text,
+  role text not null default 'supervisor' check (role in ('admin', 'supervisor')),
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- Workers
+-- ---------------------------------------------------------------------------
+create table if not exists public.workers (
+  id uuid primary key default gen_random_uuid(),
+  worker_id text not null unique,
+  name text not null,
+  phone text,
+  department text,
+  designation text,
+  joining_date date,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- Shifts
+-- ---------------------------------------------------------------------------
+create table if not exists public.shifts (
+  id uuid primary key default gen_random_uuid(),
+  shift_code text not null unique,
+  name text not null,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- Attendance
+-- ---------------------------------------------------------------------------
+create table if not exists public.attendance (
+  id uuid primary key default gen_random_uuid(),
+  worker_id uuid not null references public.workers (id) on delete restrict,
+  shift_id uuid not null references public.shifts (id) on delete restrict,
+  attendance_date date not null,
+  status text not null default 'present' check (status in ('present', 'absent', 'leave', 'half_day')),
+  marked_at timestamptz not null default now(),
+  marked_by uuid references public.profiles (id),
+  method text not null default 'qr' check (method in ('qr', 'manual')),
+  created_at timestamptz not null default now(),
+  -- A worker cannot be marked twice for the same shift on the same day.
+  constraint uq_attendance_worker_shift_date unique (worker_id, shift_id, attendance_date)
+);
+
+-- ---------------------------------------------------------------------------
+-- Reports
+-- ---------------------------------------------------------------------------
+create table if not exists public.reports (
+  id uuid primary key default gen_random_uuid(),
+  report_type text not null default 'monthly_attendance',
+  report_month date,
+  file_name text not null,
+  storage_path text not null,
+  generated_by uuid references public.profiles (id),
+  generated_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- Company settings
+-- ---------------------------------------------------------------------------
+create table if not exists public.company_settings (
+  id uuid primary key default gen_random_uuid(),
+  company_name text not null default '',
+  address text not null default '',
+  logo_url text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- updated_at trigger
+-- ---------------------------------------------------------------------------
+create or replace function public.set_updated_at() returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_profiles_updated_at on public.profiles;
+create trigger trg_profiles_updated_at
+before update on public.profiles
+for each row execute function public.set_updated_at();
+
+drop trigger if exists trg_workers_updated_at on public.workers;
+create trigger trg_workers_updated_at
+before update on public.workers
+for each row execute function public.set_updated_at();
+
+drop trigger if exists trg_company_settings_updated_at on public.company_settings;
+create trigger trg_company_settings_updated_at
+before update on public.company_settings
+for each row execute function public.set_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- Auto generate next Worker ID (WRK001, WRK002, ...)
+-- ---------------------------------------------------------------------------
+create or replace function public.generate_next_worker_id() returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  max_num integer;
+begin
+  select coalesce(max(substring(worker_id from 3)::integer), 0)
+  into max_num
+  from public.workers;
+  return 'WRK' || lpad((max_num + 1)::text, 3, '0');
+end;
+$$;
+
+create or replace function public.set_worker_id() returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.worker_id is null or new.worker_id = '' then
+    new.worker_id := public.generate_next_worker_id();
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_set_worker_id on public.workers;
+create trigger trg_set_worker_id
+before insert on public.workers
+for each row execute function public.set_worker_id();
+
+-- ---------------------------------------------------------------------------
+-- Auto create profile when a Supabase Auth user is created.
+-- Put { "full_name": "...", "role": "admin" | "supervisor" } in user metadata.
+-- ---------------------------------------------------------------------------
+create or replace function public.handle_new_user() returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, full_name, email, role)
+  values (
+    new.id,
+    coalesce(nullif(new.raw_user_meta_data ->> 'full_name', ''), ''),
+    new.email,
+    coalesce(new.raw_user_meta_data ->> 'role', 'supervisor')
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_new_user();
+
+-- ---------------------------------------------------------------------------
+-- Indexes
+-- ---------------------------------------------------------------------------
+create index if not exists idx_attendance_worker on public.attendance (worker_id);
+create index if not exists idx_attendance_shift on public.attendance (shift_id);
+create index if not exists idx_attendance_date on public.attendance (attendance_date);
+create index if not exists idx_attendance_marked_by on public.attendance (marked_by);
+create index if not exists idx_attendance_date_shift on public.attendance (attendance_date, shift_id);
+create index if not exists idx_attendance_worker_date on public.attendance (worker_id, attendance_date);
+create index if not exists idx_workers_active on public.workers (active);
+create index if not exists idx_reports_report_month on public.reports (report_month);
+
+-- ---------------------------------------------------------------------------
+-- Seed data
+-- ---------------------------------------------------------------------------
+insert into public.shifts (shift_code, name)
+values ('SHIFT_1', 'Shift 1'), ('SHIFT_2', 'Shift 2')
+on conflict (shift_code) do nothing;
+
+insert into public.company_settings (company_name, address)
+values ('Gowri Toys', '')
+on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Row Level Security
+-- ---------------------------------------------------------------------------
+alter table public.profiles enable row level security;
+alter table public.workers enable row level security;
+alter table public.shifts enable row level security;
+alter table public.attendance enable row level security;
+alter table public.reports enable row level security;
+alter table public.company_settings enable row level security;
+
+-- Helper: role of the current user (null when not signed in)
+create or replace function public.current_user_role() returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select role from public.profiles where id = auth.uid()
+$$;
+
+drop policy if exists "profiles_select_own" on public.profiles;
+create policy "profiles_select_own"
+on public.profiles for select
+using (auth.uid() = id);
+
+drop policy if exists "profiles_admin_all" on public.profiles;
+create policy "profiles_admin_all"
+on public.profiles for all
+using (public.current_user_role() = 'admin')
+with check (public.current_user_role() = 'admin');
+
+drop policy if exists "profiles_update_own" on public.profiles;
+create policy "profiles_update_own"
+on public.profiles for update
+using (auth.uid() = id)
+with check (auth.uid() = id);
+
+drop policy if exists "workers_select_all_authenticated" on public.workers;
+create policy "workers_select_all_authenticated"
+on public.workers for select
+using (auth.role() = 'authenticated');
+
+drop policy if exists "workers_admin_insert" on public.workers;
+create policy "workers_admin_insert"
+on public.workers for insert
+with check (public.current_user_role() = 'admin');
+
+drop policy if exists "workers_admin_update" on public.workers;
+create policy "workers_admin_update"
+on public.workers for update
+using (public.current_user_role() = 'admin')
+with check (public.current_user_role() = 'admin');
+
+drop policy if exists "workers_admin_delete" on public.workers;
+create policy "workers_admin_delete"
+on public.workers for delete
+using (public.current_user_role() = 'admin');
+
+drop policy if exists "shifts_select_all_authenticated" on public.shifts;
+create policy "shifts_select_all_authenticated"
+on public.shifts for select
+using (auth.role() = 'authenticated');
+
+drop policy if exists "attendance_select_all_authenticated" on public.attendance;
+create policy "attendance_select_all_authenticated"
+on public.attendance for select
+using (auth.role() = 'authenticated');
+
+drop policy if exists "reports_select_all_authenticated" on public.reports;
+create policy "reports_select_all_authenticated"
+on public.reports for select
+using (auth.role() = 'authenticated');
+
+drop policy if exists "company_settings_select_all_authenticated" on public.company_settings;
+create policy "company_settings_select_all_authenticated"
+on public.company_settings for select
+using (auth.role() = 'authenticated');
+
+drop policy if exists "company_settings_admin_all" on public.company_settings;
+create policy "company_settings_admin_all"
+on public.company_settings for all
+using (public.current_user_role() = 'admin')
+with check (public.current_user_role() = 'admin');
+
+drop policy if exists "attendance_reports_select_authenticated" on storage.objects;
+create policy "attendance_reports_select_authenticated"
+on storage.objects for select
+using (bucket_id = 'attendance-reports' and auth.role() = 'authenticated');
+
+-- ---------------------------------------------------------------------------
+-- Storage bucket
+-- ---------------------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('attendance-reports', 'attendance-reports', false)
+on conflict (id) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Helper view for monthly rollups (used by the report generator)
+-- ---------------------------------------------------------------------------
+create or replace view public.monthly_attendance_summary as
+select
+  w.id,
+  w.worker_id,
+  w.name,
+  s.shift_code,
+  a.attendance_date
+from public.attendance a
+join public.workers w on w.id = a.worker_id
+join public.shifts s on s.id = a.shift_id
+order by w.worker_id, a.attendance_date;
+
+-- ---------------------------------------------------------------------------
+-- Test users (admin + supervisor). Passwords: password123
+-- Leaving user creation to scripts/db-setup.mjs via the Auth admin API so the
+-- hashes are always GoTrue-compatible. This block only removes stale rows.
+-- ---------------------------------------------------------------------------
+delete from public.profiles where email in ('admin@gowritoys.com', 'supervisor@gowritoys.com');
+delete from auth.users where email in ('admin@gowritoys.com', 'supervisor@gowritoys.com');

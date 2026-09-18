@@ -1,0 +1,15 @@
+[project]
+id = ""  # fill in with your Supabase project id (optional, for local CLI)
+
+[auth]
+enabled = true
+site_url = "localhost"
+
+[functions]
+enable_warnings = true
+
+[functions.mark-attendance]
+verify_jwt = true
+
+[functions.generate-monthly-report]
+verify_jwt = true
