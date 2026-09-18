@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppButton, TextField } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
@@ -9,6 +10,7 @@ import { useAuth } from '@/lib/auth';
 import type { Worker } from '@/lib/types';
 
 export default function EditWorkerScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useAuth();
 
@@ -63,7 +65,7 @@ export default function EditWorkerScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Text style={styles.wid}>Worker ID: {worker?.worker_id ?? id} (cannot be changed)</Text>
 

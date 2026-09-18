@@ -267,23 +267,6 @@ export default function DashboardScreen() {
               style={styles.headerRight}
             >
               <Pressable
-                style={
-                  styles.notificationButton
-                }
-                hitSlop={8}
-              >
-                <Ionicons
-                  name="notifications-outline"
-                  size={20}
-                  color={Colors.text}
-                />
-
-                <View
-                  style={styles.notificationDot}
-                />
-              </Pressable>
-
-              <Pressable
                 style={styles.avatar}
                 onPress={() =>
                   router.push(
@@ -810,45 +793,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
 
     gap: 10,
-  },
-
-  notificationButton: {
-    width: 38,
-
-    height: 38,
-
-    borderRadius: 19,
-
-    backgroundColor:
-      Colors.surfaceSecondary,
-
-    alignItems: 'center',
-
-    justifyContent: 'center',
-
-    position: 'relative',
-  },
-
-  notificationDot: {
-    position: 'absolute',
-
-    width: 6,
-
-    height: 6,
-
-    borderRadius: 3,
-
-    backgroundColor:
-      Colors.danger,
-
-    top: 8,
-
-    right: 8,
-
-    borderWidth: 1.5,
-
-    borderColor:
-      Colors.surfaceSecondary,
   },
 
   avatar: {

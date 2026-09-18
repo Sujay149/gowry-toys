@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppButton, TextField } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
@@ -8,6 +9,7 @@ import { createWorker } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
 export default function AddWorkerScreen() {
+  const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -59,7 +61,7 @@ export default function AddWorkerScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
       <Text style={styles.hint}>
         The Company ID (WRKxxx) is generated automatically and cannot be changed.
       </Text>

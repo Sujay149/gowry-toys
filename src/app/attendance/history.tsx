@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar, Badge, Card, EmptyState, SectionTitle, StatCard, TextField } from '@/components/ui';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
@@ -21,6 +22,7 @@ interface DayCell {
 }
 
 export default function AttendanceHistoryScreen() {
+  const insets = useSafeAreaInsets();
   const [month, setMonth] = useState(currentMonth());
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [worker, setWorker] = useState<Worker | null>(null);
@@ -95,7 +97,7 @@ export default function AttendanceHistoryScreen() {
     new Date(`${date}T00:00:00`).toLocaleDateString([], { weekday: 'short' });
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
       {!worker ? (
         <>
           <Card>

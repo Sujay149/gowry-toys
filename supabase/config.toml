@@ -1,5 +1,5 @@
 [project]
-id = ""  # fill in with your Supabase project id (optional, for local CLI)
+project_id = "mcqcmrcipdqkxrrrqltw"
 
 [auth]
 enabled = true

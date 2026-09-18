@@ -23,6 +23,11 @@ function pad(num: number, len = 3): string {
   return String(num).padStart(len, '0');
 }
 
+function nextMonthStart(month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
+}
+
 interface SummaryRow {
   worker_id: string;
   name: string;
@@ -33,13 +38,15 @@ interface SummaryRow {
 
 async function fetchAllAttendance(admin: SupabaseClient, month: string) {
   const rows: { worker_id: string; attendance_date: string; shift?: { shift_code?: string | null } | null }[] = [];
-  const pageSize = 5000;
+  const pageSize = 1000;
+  const end = nextMonthStart(month);
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await admin
       .from('attendance')
       .select('worker_id, attendance_date, shift:shifts(shift_code)')
       .gte('attendance_date', `${month}-01`)
-      .lte('attendance_date', `${month}-31`)
+      .lt('attendance_date', end)
+      .order('id', { ascending: true })
       .range(from, from + pageSize - 1);
     if (error) throw error;
     rows.push(...(data as typeof rows));
@@ -279,7 +286,7 @@ Deno.serve(async (req) => {
   }
 
   const month = body?.month;
-  if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+  if (!month || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
     return json(
       { success: false, code: 'INVALID_REQUEST', message: 'A valid month in YYYY-MM format is required.' },
       400

@@ -2,12 +2,27 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
 import { AuthProvider } from '@/lib/auth';
+import { Colors } from '@/constants/theme';
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#F8FAFC' } }}>
+      <StatusBar style="dark" backgroundColor={Colors.background} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: Colors.background },
+          headerStyle: {
+            backgroundColor: Colors.card,
+          },
+          headerShadowVisible: false,
+          headerTintColor: Colors.primary,
+          headerTitleStyle: {
+            fontWeight: '700',
+            color: Colors.text,
+          },
+          headerBackTitle: 'Back',
+        }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="login" />
         <Stack.Screen name="(tabs)" />
