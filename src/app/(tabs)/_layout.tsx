@@ -1,10 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
-import { StyleSheet, Text, View, type ColorValue } from 'react-native';
+import { useEffect, useRef } from 'react';
+import {
+  Animated,
+  StyleSheet,
+  Text,
+  View,
+  type ColorValue,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/ui';
-import { Colors, FontSizes, FontWeights, Spacing } from '@/constants/theme';
+import { Colors, FontSizes, FontWeights, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 
 interface TabIconProps {
@@ -15,12 +22,46 @@ interface TabIconProps {
 }
 
 function TabIcon({ color, size, name, focused }: TabIconProps) {
+  const scale = useRef(new Animated.Value(focused ? 1 : 0.9)).current;
+
+  useEffect(() => {
+    Animated.spring(scale, {
+      toValue: focused ? 1 : 0.9,
+      useNativeDriver: true,
+      friction: 5,
+      tension: 220,
+    }).start();
+  }, [focused, scale]);
+
+  const iconName = (
+    focused ? name : `${name}-outline`
+  ) as keyof typeof Ionicons.glyphMap;
+
   return (
-    <Ionicons
-      name={focused ? name : (`${name}-outline` as keyof typeof Ionicons.glyphMap)}
-      size={size}
-      color={String(color)}
-    />
+    <Animated.View
+      style={[
+        styles.iconWrap,
+        focused && styles.iconWrapActive,
+        { transform: [{ scale }] },
+      ]}>
+      <Ionicons
+        name={iconName}
+        size={size}
+        color={String(color)}
+      />
+      <Animated.View
+        style={[
+          styles.iconDot,
+          focused && styles.iconDotActive,
+          {
+            opacity: scale.interpolate({
+              inputRange: [0.9, 1],
+              outputRange: [0, 1],
+            }),
+          },
+        ]}
+      />
+    </Animated.View>
   );
 }
 
@@ -69,7 +110,8 @@ export default function TabsLayout() {
         tabBarLabelStyle: {
           fontSize: FontSizes.micro,
           fontWeight: FontWeights.semibold,
-          marginTop: 2,
+          marginTop: 4,
+          letterSpacing: 0.2,
         },
       }}>
       <Tabs.Screen
@@ -80,16 +122,14 @@ export default function TabsLayout() {
           tabBarIcon: (props) => <TabIcon {...props} name="home" />,
         }}
       />
-      {isAdmin ? (
-        <Tabs.Screen
-          name="workers"
-          options={{
-            title: 'Workers',
-            tabBarLabel: 'Workers',
-            tabBarIcon: (props) => <TabIcon {...props} name="people" />,
-          }}
-        />
-      ) : null}
+      <Tabs.Screen
+        name="workers"
+        options={{
+          href: null,
+          title: 'Workers',
+          tabBarLabel: 'Workers',
+        }}
+      />
       <Tabs.Screen
         name="scan"
         options={{
@@ -127,6 +167,27 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
+  iconWrap: {
+    width: 46,
+    height: 30,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconWrapActive: {
+    backgroundColor: Colors.primarySoft,
+  },
+  iconDot: {
+    position: 'absolute',
+    bottom: -5,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'transparent',
+  },
+  iconDotActive: {
+    backgroundColor: Colors.primary,
+  },
   missing: {
     flex: 1,
     backgroundColor: Colors.background,

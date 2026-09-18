@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, Redirect, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Badge, EmptyState } from '@/components/ui';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
@@ -49,7 +50,19 @@ export default function WorkersScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Workers</Text>
+          <Text style={styles.headerSubtitle}>
+            {loading ? 'Loading…' : `${filtered.length} of ${workers.length} shown`}
+          </Text>
+        </View>
+        <Pressable style={styles.headerAdd} onPress={() => router.push('/workers/add')} hitSlop={8}>
+          <Ionicons name="add" size={22} color={Colors.white} />
+        </Pressable>
+      </View>
+
       <View style={styles.searchRow}>
         <View style={styles.search}>
           <Ionicons name="search" size={18} color={Colors.textMuted} />
@@ -122,7 +135,7 @@ export default function WorkersScreen() {
       <Pressable style={styles.fab} onPress={() => router.push('/workers/add')}>
         <Ionicons name="add" size={28} color={Colors.white} />
       </Pressable>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -130,7 +143,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
+  },
+  headerTitle: {
+    fontSize: FontSizes.xl,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  headerSubtitle: {
+    fontSize: FontSizes.sm,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  headerAdd: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   searchRow: {
     paddingHorizontal: Spacing.lg,
