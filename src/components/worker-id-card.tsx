@@ -1,5 +1,11 @@
 import type { RefObject } from 'react';
-import { Image, StyleSheet, Text, View, type ViewProps } from 'react-native';
+import {
+  Image,
+  StyleSheet,
+  Text,
+  View,
+  type ViewProps,
+} from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { encodeWorkerQr } from '@/lib/qr';
@@ -18,56 +24,226 @@ function initialsOf(name: string): string {
 
 interface WorkerIdCardProps extends ViewProps {
   worker: Worker;
-  /** Card width in points. Height flows from content. */
   width?: number;
-  /** Ref attached to the card root so it can be captured for download/print. */
   cardRef?: RefObject<View | null>;
 }
 
-export function WorkerIdCard({ worker, width = CARD_WIDTH, cardRef, style, ...rest }: WorkerIdCardProps) {
+export function WorkerIdCard({
+  worker,
+  width = CARD_WIDTH,
+  cardRef,
+  style,
+  ...rest
+}: WorkerIdCardProps) {
   const s = width / CARD_WIDTH;
-  const photo = (width * 0.38) / 1;
-  const qr = width * 0.5;
+
+  const photoSize = 116 * s;
+  const qrSize = 150 * s;
 
   return (
     <View
       {...rest}
       ref={cardRef}
       collapsable={false}
-      style={[styles.card, { width }, style]}>
-      <Text style={[styles.brand, { fontSize: 22 * s }]}>GOWRI TOYS</Text>
+      style={[
+        styles.card,
+        {
+          width,
+          borderRadius: 14 * s,
+          paddingHorizontal: 20 * s,
+          paddingVertical: 20 * s,
+        },
+        style,
+      ]}
+    >
+      {/* Brand */}
+      <View style={styles.brandSection}>
+        <Text
+          style={[
+            styles.brand,
+            {
+              fontSize: 21 * s,
+              letterSpacing: 3 * s,
+            },
+          ]}
+        >
+          GOWRI TOYS
+        </Text>
 
-      {worker.avatar_url ? (
-        <Image
-          source={{ uri: worker.avatar_url }}
-          style={[styles.photo, { width: photo, height: photo }]}
-          resizeMode="cover"
+        <View
+          style={[
+            styles.brandLine,
+            {
+              width: 42 * s,
+              height: 3 * s,
+              marginTop: 7 * s,
+            },
+          ]}
         />
-      ) : (
-        <View style={[styles.photoPlaceholder, { width: photo, height: photo }]}>
-          <Text style={[styles.initials, { fontSize: 34 * s }]}>
-            {initialsOf(worker.name) || '?'}
-          </Text>
-        </View>
-      )}
+      </View>
 
-      <View style={[styles.textBlock, { gap: 10 * s }]}>
-        <Text style={[styles.name, { fontSize: 26 * s }]} numberOfLines={2}>
+      {/* Worker Photo */}
+      <View
+        style={[
+          styles.photoFrame,
+          {
+            width: photoSize,
+            height: photoSize,
+            borderRadius: 10 * s,
+            marginTop: 18 * s,
+          },
+        ]}
+      >
+        {worker.avatar_url ? (
+          <Image
+            source={{ uri: worker.avatar_url }}
+            style={[
+              styles.photo,
+              {
+                width: photoSize,
+                height: photoSize,
+                borderRadius: 9 * s,
+              },
+            ]}
+            resizeMode="cover"
+          />
+        ) : (
+          <View
+            style={[
+              styles.photoPlaceholder,
+              {
+                width: photoSize,
+                height: photoSize,
+                borderRadius: 9 * s,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.initials,
+                {
+                  fontSize: 34 * s,
+                },
+              ]}
+            >
+              {initialsOf(worker.name) || '?'}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Worker Details */}
+      <View
+        style={[
+          styles.details,
+          {
+            marginTop: 16 * s,
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.name,
+            {
+              fontSize: 22 * s,
+              lineHeight: 27 * s,
+            },
+          ]}
+          numberOfLines={2}
+        >
           {worker.name}
         </Text>
 
-        <Text style={[styles.label, { fontSize: 10 * s, marginTop: 4 }]}>Worker ID</Text>
-        <Text style={[styles.value, { fontSize: 22 * s }]}>{worker.worker_id}</Text>
+        <View
+          style={[
+            styles.idSection,
+            {
+              marginTop: 9 * s,
+              paddingHorizontal: 14 * s,
+              paddingVertical: 7 * s,
+              borderRadius: 8 * s,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.idLabel,
+              {
+                fontSize: 8 * s,
+                letterSpacing: 1.2 * s,
+              },
+            ]}
+          >
+            WORKER ID
+          </Text>
+
+          <Text
+            style={[
+              styles.workerId,
+              {
+                fontSize: 17 * s,
+                marginTop: 2 * s,
+              },
+            ]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {worker.worker_id}
+          </Text>
+        </View>
       </View>
 
-      <View style={[styles.qrWrap, { padding: 10 * s }]}>
-        <QRCode
-          value={encodeWorkerQr(worker.worker_id)}
-          size={qr}
-          color="#000000"
-          backgroundColor="#FFFFFF"
-          ecl="M"
-        />
+      {/* Divider */}
+      <View
+        style={[
+          styles.divider,
+          {
+            marginTop: 18 * s,
+          },
+        ]}
+      />
+
+      {/* QR Code */}
+      <View
+        style={[
+          styles.qrSection,
+          {
+            marginTop: 16 * s,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.qrFrame,
+            {
+              width: qrSize + 22 * s,
+              height: qrSize + 22 * s,
+              padding: 11 * s,
+              borderRadius: 10 * s,
+            },
+          ]}
+        >
+          <QRCode
+            value={encodeWorkerQr(worker.worker_id)}
+            size={qrSize}
+            color="#000000"
+            backgroundColor="#FFFFFF"
+            ecl="M"
+          />
+        </View>
+
+        <Text
+          style={[
+            styles.scanText,
+            {
+              fontSize: 8 * s,
+              letterSpacing: 1.1 * s,
+              marginTop: 9 * s,
+            },
+          ]}
+        >
+          SCAN FOR ATTENDANCE
+        </Text>
       </View>
     </View>
   );
@@ -75,65 +251,111 @@ export function WorkerIdCard({ worker, width = CARD_WIDTH, cardRef, style, ...re
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#ECEEEC',
+    alignItems: 'center',
+    backgroundColor: '#F1F3F1',
     borderWidth: 1.5,
-    borderColor: '#000000',
-    borderRadius: 10,
-    paddingVertical: 18,
-    paddingHorizontal: 16,
+    borderColor: '#111111',
+
+    // Keep this subtle because the card is also captured for printing.
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
+  brandSection: {
     alignItems: 'center',
   },
+
   brand: {
-    color: '#000000',
-    fontWeight: '800',
-    letterSpacing: 3,
-    marginBottom: 14,
+    color: '#111111',
+    fontWeight: '900',
     textAlign: 'center',
   },
-  photo: {
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#000000',
+
+  brandLine: {
+    backgroundColor: '#111111',
+    borderRadius: 99,
+  },
+
+  photoFrame: {
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: '#111111',
     backgroundColor: '#FFFFFF',
   },
+
+  photo: {
+    backgroundColor: '#FFFFFF',
+  },
+
   photoPlaceholder: {
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#000000',
-    backgroundColor: '#F6F6F4',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#E5E8E5',
   },
+
   initials: {
-    color: '#151716',
-    fontWeight: '800',
+    color: '#171918',
+    fontWeight: '900',
   },
-  textBlock: {
+
+  details: {
+    width: '100%',
     alignItems: 'center',
-    marginTop: 14,
   },
-  label: {
-    color: '#44474A',
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
+
+  name: {
+    maxWidth: '94%',
+    color: '#111111',
+    fontWeight: '900',
+    textAlign: 'center',
   },
-  value: {
-    color: '#000000',
+
+  idSection: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D2D5D2',
+  },
+
+  idLabel: {
+    color: '#666B67',
     fontWeight: '800',
+  },
+
+  workerId: {
+    color: '#111111',
+    fontWeight: '900',
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
   },
-  name: {
-    color: '#000000',
-    fontWeight: '800',
-    textAlign: 'center',
+
+  divider: {
+    width: '86%',
+    height: 1,
+    backgroundColor: '#D0D3D0',
   },
-  qrWrap: {
-    marginTop: 16,
+
+  qrSection: {
+    alignItems: 'center',
+  },
+
+  qrFrame: {
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#000000',
-    borderRadius: 6,
+    borderColor: '#111111',
+  },
+
+  scanText: {
+    color: '#555A56',
+    fontWeight: '800',
+    textAlign: 'center',
   },
 });
