@@ -1,9 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppButton, TextField } from '@/components/ui';
+import { AppButton, AppHeader, Screen, TextField } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { fetchWorkerByWorkerId, updateWorker } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -35,15 +35,15 @@ export default function EditWorkerScreen() {
     });
   }, [id]);
 
-  const isAdmin = profile?.role === 'admin';
+  const canManage = profile?.role === 'admin' || profile?.role === 'supervisor';
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (!canManage) {
       router.replace('/(tabs)/dashboard');
     }
-  }, [isAdmin]);
+  }, [canManage]);
 
-  if (!isAdmin) {
+  if (!canManage) {
     return null;
   }
 
@@ -63,7 +63,7 @@ export default function EditWorkerScreen() {
         designation: designation.trim() || undefined,
         joining_date: joiningDate.trim() || undefined,
       });
-      Alert.alert('Saved', 'Worker details updated.', [{ text: 'OK', onPress: () => router.back() }]);
+      router.back();
     } catch {
       setError('Could not save changes. Please try again.');
     } finally {
@@ -72,7 +72,10 @@ export default function EditWorkerScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
+    <Screen
+      padded={false}
+      header={<AppHeader title="Edit Worker" onBack={() => router.back()} />}
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Text style={styles.wid}>Worker ID: {worker?.worker_id ?? id} (cannot be changed)</Text>
 
@@ -83,7 +86,7 @@ export default function EditWorkerScreen() {
       <TextField label="Joining Date (YYYY-MM-DD)" icon="calendar-outline" value={joiningDate} onChangeText={setJoiningDate} />
 
       <AppButton title="Save Changes" onPress={handleSave} loading={saving} size="lg" icon="save-outline" />
-    </ScrollView>
+    </Screen>
   );
 }
 

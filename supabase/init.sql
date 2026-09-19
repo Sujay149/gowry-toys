@@ -30,9 +30,13 @@ create table if not exists public.workers (
   designation text,
   joining_date date,
   active boolean not null default true,
+  deleted_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Idempotent guard for databases created before soft-delete support.
+alter table if exists public.workers add column if not exists deleted_at timestamptz;
 
 -- ---------------------------------------------------------------------------
 -- Shifts
@@ -243,20 +247,23 @@ on public.workers for select
 using (auth.role() = 'authenticated');
 
 drop policy if exists "workers_admin_insert" on public.workers;
-create policy "workers_admin_insert"
+drop policy if exists "workers_manage_insert" on public.workers;
+create policy "workers_manage_insert"
 on public.workers for insert
-with check (public.current_user_role() = 'admin');
+with check (public.current_user_role() in ('admin', 'supervisor'));
 
 drop policy if exists "workers_admin_update" on public.workers;
-create policy "workers_admin_update"
+drop policy if exists "workers_manage_update" on public.workers;
+create policy "workers_manage_update"
 on public.workers for update
-using (public.current_user_role() = 'admin')
-with check (public.current_user_role() = 'admin');
+using (public.current_user_role() in ('admin', 'supervisor'))
+with check (public.current_user_role() in ('admin', 'supervisor'));
 
 drop policy if exists "workers_admin_delete" on public.workers;
-create policy "workers_admin_delete"
+drop policy if exists "workers_manage_delete" on public.workers;
+create policy "workers_manage_delete"
 on public.workers for delete
-using (public.current_user_role() = 'admin');
+using (public.current_user_role() in ('admin', 'supervisor'));
 
 drop policy if exists "shifts_select_all_authenticated" on public.shifts;
 create policy "shifts_select_all_authenticated"
@@ -313,8 +320,15 @@ order by w.worker_id, a.attendance_date;
 
 -- ---------------------------------------------------------------------------
 -- Test users (admin + supervisor). Passwords: password123
--- Leaving user creation to scripts/db-setup.mjs via the Auth admin API so the
--- hashes are always GoTrue-compatible. This block only removes stale rows.
+-- Creating users is handled by scripts/db-setup.mjs via the Auth admin API so
+-- the hashes are always GoTrue-compatible. This block only removes stale test
+-- accounts that nothing references (attendance.marked_by) so an in-use
+-- database is never clobbered.
 -- ---------------------------------------------------------------------------
-delete from public.profiles where email in ('admin@gowritoys.com', 'supervisor@gowritoys.com');
-delete from auth.users where email in ('admin@gowritoys.com', 'supervisor@gowritoys.com');
+delete from public.profiles p
+where p.email in ('admin@gowritoys.com', 'supervisor@gowritoys.com')
+  and not exists (select 1 from public.attendance a where a.marked_by = p.id);
+
+delete from auth.users u
+where u.email in ('admin@gowritoys.com', 'supervisor@gowritoys.com')
+  and not exists (select 1 from public.attendance a where a.marked_by = u.id);

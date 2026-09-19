@@ -8,6 +8,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { createClient } from '@supabase/supabase-js';
 import pg from 'pg';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -41,35 +42,28 @@ async function runSql(url) {
 }
 
 async function upsertAuthUser(apiUrl, serviceKey, user) {
-  const headers = {
-    apikey: serviceKey,
-    Authorization: `Bearer ${serviceKey}`,
-    'Content-Type': 'application/json',
-  };
-  const list = await fetch(`${apiUrl}/auth/v1/admin/users?email=${encodeURIComponent(user.email)}`, {
-    headers,
+  const admin = createClient(apiUrl, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
-  if (list.ok) {
-    const body = await list.json();
-    const existing = body.users?.[0];
-    if (existing) {
-      const del = await fetch(`${apiUrl}/auth/v1/admin/users/${existing.id}`, { method: 'DELETE', headers });
-      if (!del.ok) throw new Error(`delete ${user.email}: HTTP ${del.status} ${await del.text()}`);
-    }
+  const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  const existing = data?.users?.find((u) => u.email === user.email);
+  const metadata = { full_name: user.full_name, role: user.role };
+
+  if (existing) {
+    // Reuse the account when it already exists (it may own attendance data via
+    // profiles/attendance). Keep the display metadata in sync without
+    // recreating it, so existing sessions and marked_by references survive.
+    await admin.auth.admin.updateUserById(existing.id, { user_metadata: metadata });
+    return existing.id;
   }
-  const create = await fetch(`${apiUrl}/auth/v1/admin/users`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      email: user.email,
-      password: 'password123',
-      email_confirm: true,
-      user_metadata: { full_name: user.full_name, role: user.role },
-    }),
+
+  const created = await admin.auth.admin.createUser({
+    email: user.email,
+    password: 'password123',
+    email_confirm: true,
+    user_metadata: metadata,
   });
-  if (!create.ok) throw new Error(`create ${user.email}: HTTP ${create.status} ${await create.text()}`);
-  const created = await create.json();
-  return created.id;
+  return created.data.user.id;
 }
 
 async function main() {

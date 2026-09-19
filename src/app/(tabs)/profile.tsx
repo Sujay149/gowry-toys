@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useEffect, useState } from 'react';
 
@@ -300,50 +301,37 @@ export default function ProfileScreen() {
       </View>
 
       <FadeInView delay={180}>
-        <Card style={styles.tipsCard}>
+        <Card style={styles.tipsCard} padded={false}>
+          <TipRow
+            icon="people-outline"
+            title="Manage workers"
+            text="Add, update, deactivate, or delete workers."
+            onPress={() => router.push('/(tabs)/workers')}
+          />
+
           {isAdmin ? (
-            <>
-              <TipRow
-                icon="people-outline"
-                title="Manage workers"
-                text="Add, update, and manage worker information."
-              />
+            <TipRow
+              icon="person-outline"
+              title="Manage supervisors"
+              text="Control supervisor accounts and access."
+              onPress={() => router.push('/supervisors')}
+            />
+          ) : null}
 
-              <TipRow
-                icon="person-outline"
-                title="Manage supervisors"
-                text="Control supervisor accounts and access."
-              />
+          <TipRow
+            icon="qr-code-outline"
+            title="Scan attendance"
+            text="Select a shift and scan worker QR codes."
+            onPress={() => router.push('/(tabs)/scan')}
+          />
 
-              <TipRow
-                icon="document-text-outline"
-                title="Attendance reports"
-                text="Generate and access monthly attendance reports."
-                last
-              />
-            </>
-          ) : (
-            <>
-              <TipRow
-                icon="scan-outline"
-                title="Select a shift"
-                text="Choose the correct shift before scanning workers."
-              />
-
-              <TipRow
-                icon="qr-code-outline"
-                title="Scan worker QR"
-                text="Scan each worker's unique QR code to record attendance."
-              />
-
-              <TipRow
-                icon="shield-checkmark-outline"
-                title="Duplicate protection"
-                text="Duplicate scans for the same shift and day are rejected automatically."
-                last
-              />
-            </>
-          )}
+          <TipRow
+            icon="document-text-outline"
+            title="Attendance reports"
+            text="Generate and access monthly attendance reports."
+            onPress={() => router.push('/(tabs)/reports')}
+            last
+          />
         </Card>
       </FadeInView>
 
@@ -400,37 +388,38 @@ function TipRow({
   title,
   text,
   last = false,
+  onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   text: string;
   last?: boolean;
+  onPress?: () => void;
 }) {
   return (
-    <View
-      style={[
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      style={({ pressed }) => [
         styles.tipRow,
         !last && styles.tipDivider,
+        onPress && styles.tipPressable,
+        pressed && onPress && { opacity: 0.75 },
       ]}
     >
       <View style={styles.tipIcon}>
-        <Ionicons
-          name={icon}
-          size={18}
-          color={Colors.primary}
-        />
+        <Ionicons name={icon} size={18} color={Colors.primary} />
       </View>
 
       <View style={styles.tipContent}>
-        <Text style={styles.tipTitle}>
-          {title}
-        </Text>
-
-        <Text style={styles.tipText}>
-          {text}
-        </Text>
+        <Text style={styles.tipTitle}>{title}</Text>
+        <Text style={styles.tipText}>{text}</Text>
       </View>
-    </View>
+
+      {onPress ? (
+        <Ionicons name="chevron-forward" size={17} color={Colors.textMuted} />
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -608,14 +597,18 @@ const styles = StyleSheet.create({
   },
 
   tipsCard: {
-    padding: 0,
     overflow: 'hidden',
   },
 
   tipRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     padding: Spacing.md,
+  },
+
+  tipPressable: {
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.primary,
   },
 
   tipDivider: {

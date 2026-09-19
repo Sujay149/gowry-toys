@@ -3,7 +3,9 @@ import type {
   ApiError,
   AttendanceRecord,
   CompanySettings,
+  Profile,
   Report,
+  Role,
   Shift,
   Worker,
   WorkerInput,
@@ -22,10 +24,23 @@ export function todayString(offsetDays = 0): string {
   return d.toISOString().slice(0, 10);
 }
 
+// First day of the month AFTER the given YYYY-MM. Used as an exclusive upper
+// bound so months with fewer than 31 days don't produce invalid dates like
+// '2026-09-31' (which crashes the query and mislabels detail pages as not found).
+export function monthNextStart(month: string): string {
+  const [y, m] = month.split('-').map((p) => parseInt(p, 10));
+  const d = new Date(Date.UTC(y, m, 1));
+  return d.toISOString().slice(0, 10);
+}
+
 // ---------- Workers ----------
 
 export async function fetchWorkers(includeInactive = false): Promise<Worker[]> {
-  let query = supabase.from('workers').select('*').order('worker_id', { ascending: true });
+  let query = supabase
+    .from('workers')
+    .select('*')
+    .is('deleted_at', null)
+    .order('worker_id', { ascending: true });
   if (!includeInactive) {
     query = query.eq('active', true);
   }
@@ -39,6 +54,7 @@ export async function fetchWorkerByWorkerId(workerId: string): Promise<Worker | 
     .from('workers')
     .select('*')
     .eq('worker_id', workerId)
+    .is('deleted_at', null)
     .maybeSingle();
   if (error) throw error;
   return (data as Worker) ?? null;
@@ -52,6 +68,34 @@ export async function createWorker(input: WorkerInput): Promise<Worker> {
 
 export async function updateWorker(id: string, patch: Partial<WorkerInput> & { active?: boolean }) {
   const { error } = await supabase.from('workers').update(patch).eq('id', id);
+  if (error) throw error;
+}
+
+// Soft delete: the worker row is kept (so all attendance records and reports
+// keep working), hidden everywhere in the app, and its QR can no longer be
+// scanned (active is set to false, which mark-attendance rejects).
+export async function deleteWorker(id: string) {
+  const { error } = await supabase
+    .from('workers')
+    .update({ active: false, deleted_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+// ---------- Profiles (admin only) ----------
+
+export async function fetchSupervisorProfiles(): Promise<Profile[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, email, role, active, created_at')
+    .eq('role', 'supervisor')
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data as Profile[]) ?? [];
+}
+
+export async function updateProfile(id: string, patch: { role?: Role; active?: boolean }) {
+  const { error } = await supabase.from('profiles').update(patch).eq('id', id);
   if (error) throw error;
 }
 
@@ -91,7 +135,7 @@ export async function fetchAttendanceForMonth(month: string): Promise<Attendance
     .from('attendance')
     .select(attendanceSelect)
     .gte('attendance_date', start)
-    .lte('attendance_date', `${month}-31`)
+    .lt('attendance_date', monthNextStart(month))
     .order('attendance_date', { ascending: true });
   if (error) throw error;
   return (data as AttendanceRecord[]) ?? [];
@@ -108,7 +152,7 @@ export async function fetchMonthlyAttendanceRows(month: string): Promise<Monthly
     .from('attendance')
     .select('worker_id, attendance_date, shift:shifts(shift_code)')
     .gte('attendance_date', `${month}-01`)
-    .lte('attendance_date', `${month}-31`);
+    .lt('attendance_date', monthNextStart(month));
   if (error) throw error;
   return (data as MonthlySimpleRow[]) ?? [];
 }
@@ -122,7 +166,7 @@ export async function fetchWorkerMonthAttendance(
     .select('worker_id, attendance_date, shift:shifts(shift_code)')
     .eq('worker_id', workerId)
     .gte('attendance_date', `${month}-01`)
-    .lte('attendance_date', `${month}-31`);
+    .lt('attendance_date', monthNextStart(month));
   if (error) throw error;
   return (data as MonthlySimpleRow[]) ?? [];
 }

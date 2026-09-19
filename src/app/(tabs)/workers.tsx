@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, Redirect, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,11 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, Badge, EmptyState } from '@/components/ui';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { fetchWorkers } from '@/lib/api';
-import { useAuth } from '@/lib/auth';
 import type { Worker } from '@/lib/types';
 
 export default function WorkersScreen() {
-  const { profile } = useAuth();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -44,10 +42,6 @@ export default function WorkersScreen() {
     }
     return list;
   }, [workers, filter, query]);
-
-  if (profile?.role !== 'admin') {
-    return <Redirect href="/(tabs)/dashboard" />;
-  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

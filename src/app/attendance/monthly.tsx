@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppButton, Card, EmptyState, SectionTitle, StatCard } from '@/components/ui';
+import { AppButton, AppHeader, Card, EmptyState, Screen, SectionTitle, StatCard } from '@/components/ui';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import {
   currentMonth,
@@ -84,7 +84,10 @@ export default function MonthlyAttendanceScreen() {
   }, [rows, workers]);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
+    <Screen
+      padded={false}
+      header={<AppHeader title="Monthly Attendance" onBack={() => router.back()} />}
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
       <View style={styles.monthRow}>
         <Pressable onPress={() => setMonth(shiftMonth(month, -1))} style={styles.chevron}>
           <Ionicons name="chevron-back" size={22} color={Colors.primary} />
@@ -142,7 +145,7 @@ export default function MonthlyAttendanceScreen() {
           ))}
         </Card>
       )}
-    </ScrollView>
+    </Screen>
   );
 }
 

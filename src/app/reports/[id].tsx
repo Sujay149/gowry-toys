@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, Card, Screen, SectionTitle } from '@/components/ui';
+import { AppButton, AppHeader, Card, Screen, SectionTitle } from '@/components/ui';
 import { Colors, FontSizes, Spacing } from '@/constants/theme';
 import { fetchReports, getReportSignedUrl, monthLabel } from '@/lib/api';
 import type { Report } from '@/lib/types';
@@ -28,14 +28,14 @@ export default function ReportDetailScreen() {
 
   if (!report) {
     return (
-      <Screen>
+      <Screen header={<AppHeader title="Report" onBack={() => router.back()} />}>
         <Text style={styles.muted}>Report not found.</Text>
       </Screen>
     );
   }
 
   return (
-    <Screen>
+    <Screen header={<AppHeader title="Report" onBack={() => router.back()} />}>
       <Card style={styles.fileCard}>
         <Text style={styles.fileName}>{report.file_name}</Text>
       </Card>

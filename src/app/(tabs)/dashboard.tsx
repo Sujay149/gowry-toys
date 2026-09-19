@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -101,16 +101,18 @@ export default function DashboardScreen() {
   }, []);
 
   /* ---------------------------------------------------------------------- */
-  /* INITIAL LOAD                                                           */
+  /* INITIAL LOAD + REFRESH ON FOCUS                                        */
   /* ---------------------------------------------------------------------- */
 
-  useEffect(() => {
-    setLoading(true);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
 
-    load().finally(() => {
-      setLoading(false);
-    });
-  }, [load]);
+      load().finally(() => {
+        setLoading(false);
+      });
+    }, [load])
+  );
 
   /* ---------------------------------------------------------------------- */
   /* REFRESH                                                                */
@@ -473,20 +475,18 @@ export default function DashboardScreen() {
             }
           />
 
-          {isAdmin ? (
-            <AppButton
-              title="Add Worker"
-              icon="person-add"
-              variant="outline"
-              size="lg"
-              style={styles.addWorkerButton}
-              onPress={() =>
-                router.push(
-                  '/workers/add'
-                )
-              }
-            />
-          ) : null}
+          <AppButton
+            title="Add Worker"
+            icon="person-add"
+            variant="outline"
+            size="lg"
+            style={styles.addWorkerButton}
+            onPress={() =>
+              router.push(
+                '/workers/add'
+              )
+            }
+          />
         </View>
       </FadeInView>
 

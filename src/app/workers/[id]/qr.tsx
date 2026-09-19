@@ -5,7 +5,7 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import QRCode from 'react-native-qrcode-svg';
 
-import { AppButton, Card, Screen } from '@/components/ui';
+import { AppButton, AppHeader, Card, Screen } from '@/components/ui';
 import { Colors, FontSizes, Spacing } from '@/constants/theme';
 import { fetchWorkerByWorkerId } from '@/lib/api';
 import { encodeWorkerQr } from '@/lib/qr';
@@ -43,14 +43,14 @@ export default function WorkerQrScreen() {
 
   if (!worker) {
     return (
-      <Screen>
+      <Screen header={<AppHeader title="Worker QR Code" onBack={() => router.back()} />}>
         <Text style={styles.loadingText}>Loading…</Text>
       </Screen>
     );
   }
 
   return (
-    <Screen>
+    <Screen header={<AppHeader title="Worker QR Code" onBack={() => router.back()} />}>
       <Card style={styles.card}>
         <View collapsable={false} ref={qrRef} style={styles.qrBox}>
           <View style={styles.qrWhite}>
