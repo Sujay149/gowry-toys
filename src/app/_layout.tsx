@@ -1,9 +1,12 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/lib/auth';
 import { Colors } from '@/constants/theme';
+
+SystemUI.setBackgroundColorAsync(Colors.background);
 
 export default function RootLayout() {
   return (
