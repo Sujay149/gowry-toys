@@ -188,15 +188,23 @@ export interface TodaySummary {
 }
 
 export function summarizeToday(records: AttendanceRecord[]): TodaySummary {
-  return records.reduce<TodaySummary>(
-    (acc, r) => {
-      acc.present += 1;
-      if (r.shift?.shift_code === 'SHIFT_1') acc.shift1 += 1;
-      else if (r.shift?.shift_code === 'SHIFT_2') acc.shift2 += 1;
-      return acc;
-    },
-    { present: 0, shift1: 0, shift2: 0 }
-  );
+  const presentWorkers = new Set<string>();
+
+  let shift1 = 0;
+  let shift2 = 0;
+
+  for (const r of records) {
+    if (r.worker_id) presentWorkers.add(r.worker_id);
+
+    if (r.shift?.shift_code === 'SHIFT_1') shift1 += 1;
+    else if (r.shift?.shift_code === 'SHIFT_2') shift2 += 1;
+  }
+
+  return {
+    present: presentWorkers.size,
+    shift1,
+    shift2,
+  };
 }
 
 export function monthLabel(month: string): string {

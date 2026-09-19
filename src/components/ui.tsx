@@ -452,7 +452,10 @@ export function Screen({
   ...rest
 }: ScreenProps) {
   return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={['top', 'left', 'right']}
+    >
       {header}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -869,7 +872,7 @@ export function StatusHero({
 }
 
 const styles = StyleSheet.create({
-  screen: {
+  safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
   },

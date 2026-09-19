@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,8 +19,15 @@ export default function AddWorkerScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (profile?.role !== 'admin') {
-    router.replace('/(tabs)/dashboard');
+  const isAdmin = profile?.role === 'admin';
+
+  useEffect(() => {
+    if (!isAdmin) {
+      router.replace('/(tabs)/dashboard');
+    }
+  }, [isAdmin]);
+
+  if (!isAdmin) {
     return null;
   }
 

@@ -125,7 +125,7 @@ as $$
 declare
   max_num integer;
 begin
-  select coalesce(max(substring(worker_id from 3)::integer), 0)
+  select coalesce(max(substring(worker_id from 4)::integer), 0)
   into max_num
   from public.workers;
   return 'WRK' || lpad((max_num + 1)::text, 3, '0');

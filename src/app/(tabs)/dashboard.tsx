@@ -175,10 +175,13 @@ export default function DashboardScreen() {
 
   const percentage =
     workerCount > 0
-      ? Math.round(
-          (summary.present /
-            workerCount) *
-            100
+      ? Math.min(
+          100,
+          Math.round(
+            (summary.present /
+              workerCount) *
+              100
+          )
         )
       : 0;
 

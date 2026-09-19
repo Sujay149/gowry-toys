@@ -35,8 +35,15 @@ export default function EditWorkerScreen() {
     });
   }, [id]);
 
-  if (profile?.role !== 'admin') {
-    router.replace('/(tabs)/dashboard');
+  const isAdmin = profile?.role === 'admin';
+
+  useEffect(() => {
+    if (!isAdmin) {
+      router.replace('/(tabs)/dashboard');
+    }
+  }, [isAdmin]);
+
+  if (!isAdmin) {
     return null;
   }
 
