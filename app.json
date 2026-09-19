@@ -43,6 +43,13 @@
         }
       ],
       [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Gowri Toys to save worker ID card images to your photo library.",
+          "savePhotosPermission": "Allow Gowri Toys to save worker ID card images to your photo library."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#4F46E5",

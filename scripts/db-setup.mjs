@@ -1,9 +1,13 @@
 // Runs the single bootstrap migration (supabase/init.sql) against the remote
-// database and ensures the test auth accounts exist.
+// database and, by default, ensures the test auth accounts exist.
+//
+// Usage:
+//   node scripts/db-setup.mjs            # migration + seed test users
+//   node scripts/db-setup.mjs --schema-only  # run the migration only (prod-safe)
 //
 // Requires in .env:
 //   SUPABASE_DB_URL           (Connection string / pooler URL, postgres role)
-//   SUPABASE_SERVICE_ROLE_KEY (Auth admin key, for creating users)
+//   SUPABASE_SERVICE_ROLE_KEY (Auth admin key, for creating users; skipped with --schema-only)
 
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -71,14 +75,24 @@ async function main() {
   const dbUrl = env.SUPABASE_DB_URL;
   const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
   const apiUrl = (env.EXPO_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
+  const schemaOnly = process.argv.includes('--schema-only');
 
   if (!dbUrl) throw new Error('SUPABASE_DB_URL is not set in .env');
-  if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set in .env');
-  if (!apiUrl) throw new Error('EXPO_PUBLIC_SUPABASE_URL is not set in .env');
 
-  console.log('Running migration (supabase/init.sql)...');
+  const host = dbUrl.replace(/^postgres(ql)?:\/\//, '').split('@').pop()?.split(':')[0] ?? 'unknown';
+  console.log(
+    `Running migration (supabase/init.sql) against ${host}${schemaOnly ? ' (schema only)' : ''}...`
+  );
   await runSql(dbUrl);
   console.log('Migration OK.');
+
+  if (schemaOnly) {
+    console.log('Schema is up to date.');
+    return;
+  }
+
+  if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set in .env');
+  if (!apiUrl) throw new Error('EXPO_PUBLIC_SUPABASE_URL is not set in .env');
 
   console.log('Applying test users...');
   for (const user of TEST_USERS) {

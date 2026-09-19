@@ -9,6 +9,7 @@ import { AppButton, AppHeader, Avatar, Card, Screen, TextField } from '@/compone
 import { Colors, FontSizes, Spacing } from '@/constants/theme';
 import { createWorker, todayString, updateWorker, uploadWorkerAvatar } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { isInvalidSalaryInput, parseSalaryInput } from '@/lib/salary';
 import type { Worker } from '@/lib/types';
 
 export default function AddWorkerScreen() {
@@ -17,11 +18,13 @@ export default function AddWorkerScreen() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [department, setDepartment] = useState('');
+  const [dailySalaryText, setDailySalaryText] = useState('');
   const [photo, setPhoto] = useState<{ uri: string; base64?: string | null; mimeType?: string | null } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<Worker | null>(null);
 
+  const isAdmin = profile?.role === 'admin';
   const canManage = profile?.role === 'admin' || profile?.role === 'supervisor';
 
   useEffect(() => {
@@ -56,6 +59,10 @@ export default function AddWorkerScreen() {
       setError('Worker name is required.');
       return;
     }
+    if (isAdmin && isInvalidSalaryInput(dailySalaryText)) {
+      setError('Enter a valid daily salary (a number of 0 or more).');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -65,6 +72,7 @@ export default function AddWorkerScreen() {
         department: department.trim() || undefined,
         designation: 'Worker',
         joining_date: todayString(),
+        daily_salary: isAdmin ? parseSalaryInput(dailySalaryText) : null,
       });
       if (photo) {
         const avatarUrl = await uploadWorkerAvatar(worker.id, photo);
@@ -84,6 +92,7 @@ export default function AddWorkerScreen() {
     setName('');
     setPhone('');
     setDepartment('');
+    setDailySalaryText('');
     setPhoto(null);
     setError(null);
   };
@@ -102,9 +111,16 @@ export default function AddWorkerScreen() {
         <Text style={styles.successId}>Worker ID: {created.worker_id}</Text>
 
         <AppButton
+          title="Preview ID Card"
+          icon="id-card-outline"
+          size="lg"
+          style={styles.successButton}
+          onPress={() => router.replace(`/workers/${created.worker_id}/id-card`)}
+        />
+        <AppButton
           title="Show QR Code"
           icon="qr-code"
-          size="lg"
+          variant="outline"
           style={styles.successButton}
           onPress={() => router.replace(`/workers/${created.worker_id}/qr`)}
         />
@@ -156,6 +172,18 @@ export default function AddWorkerScreen() {
       <TextField label="Full Name *" icon="person-outline" value={name} onChangeText={setName} placeholder="e.g. Ravi Kumar" />
       <TextField label="Phone" icon="call-outline" value={phone} onChangeText={setPhone} placeholder="9876543210" keyboardType="phone-pad" />
       <TextField label="Department" icon="business-outline" value={department} onChangeText={setDepartment} placeholder="e.g. Wood Cutting" />
+
+      {isAdmin ? (
+        <TextField
+          label="Daily Salary (₹)"
+          icon="cash-outline"
+          value={dailySalaryText}
+          onChangeText={setDailySalaryText}
+          placeholder="e.g. 600"
+          keyboardType="decimal-pad"
+          hint="Optional. Used for payroll — 1 shift = 50%, 2 shifts = 100% of the daily rate."
+        />
+      ) : null}
 
       <AppButton title="Save Worker" onPress={handleSave} loading={saving} size="lg" icon="save-outline" />
     </Screen>

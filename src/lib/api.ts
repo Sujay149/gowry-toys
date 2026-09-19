@@ -183,7 +183,7 @@ export async function fetchShifts(): Promise<Shift[]> {
 
 const attendanceSelect = `
   *,
-  worker:workers(worker_id, name, department),
+  worker:workers(worker_id, name, department, daily_salary),
   shift:shifts(name, shift_code)
 `;
 

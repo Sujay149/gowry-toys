@@ -325,6 +325,15 @@ export default function ProfileScreen() {
             onPress={() => router.push('/(tabs)/scan')}
           />
 
+          {isAdmin ? (
+            <TipRow
+              icon="cash-outline"
+              title="Payroll"
+              text="Review monthly worker-wise salaries and totals."
+              onPress={() => router.push('/salary')}
+            />
+          ) : null}
+
           <TipRow
             icon="document-text-outline"
             title="Attendance reports"

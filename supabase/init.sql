@@ -42,6 +42,12 @@ alter table if exists public.workers add column if not exists deleted_at timesta
 -- Idempotent guard for databases created before profile-photo support.
 alter table if exists public.workers add column if not exists avatar_url text;
 
+-- Daily salary (daily payout rate used for payroll).
+-- Nullable: null means the worker's salary has not been configured yet.
+-- Only admins may set or change this value (see salary trigger below).
+alter table if exists public.workers add column if not exists daily_salary numeric
+  check (daily_salary is null or daily_salary >= 0);
+
 -- ---------------------------------------------------------------------------
 -- Shifts
 -- ---------------------------------------------------------------------------
@@ -83,6 +89,11 @@ create table if not exists public.reports (
   generated_at timestamptz not null default now()
 );
 
+-- Payroll figures captured when the report was generated so that history stays
+-- reproducible even if a worker's daily_salary is changed later.
+alter table if exists public.reports add column if not exists payroll_total numeric;
+alter table if exists public.reports add column if not exists salary_snapshot jsonb;
+
 -- ---------------------------------------------------------------------------
 -- Company settings
 -- ---------------------------------------------------------------------------
@@ -116,6 +127,36 @@ drop trigger if exists trg_workers_updated_at on public.workers;
 create trigger trg_workers_updated_at
 before update on public.workers
 for each row execute function public.set_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- Salary ownership: only admins may set or change daily_salary.
+--
+-- Supervisors may still add/edit workers in every other way. On INSERT by a
+-- non-admin the salary is silently cleared; on UPDATE a non-admin changing the
+-- salary raises an error. Service-role / admin operations keep working because
+-- current_user_role() is null for the service role (treated as not-an-admin is
+-- false, so the guard is skipped).
+-- ---------------------------------------------------------------------------
+create or replace function public.prevent_non_admin_salary_changes() returns trigger
+language plpgsql
+as $$
+begin
+  if public.current_user_role() = 'admin' then
+    return new;
+  end if;
+  if tg_op = 'INSERT' then
+    new.daily_salary := null;
+  elsif new.daily_salary is distinct from old.daily_salary then
+    raise exception 'Only admins can set or change worker salary';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_workers_salary_admin on public.workers;
+create trigger trg_workers_salary_admin
+before insert or update on public.workers
+for each row execute function public.prevent_non_admin_salary_changes();
 
 drop trigger if exists trg_company_settings_updated_at on public.company_settings;
 create trigger trg_company_settings_updated_at

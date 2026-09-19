@@ -19,6 +19,7 @@ export interface Worker {
   joining_date?: string | null;
   avatar_url?: string | null;
   active: boolean;
+  daily_salary?: number | null;
   created_at: string;
 }
 
@@ -29,6 +30,7 @@ export interface WorkerInput {
   designation?: string;
   joining_date?: string;
   avatar_url?: string | null;
+  daily_salary?: number | null;
 }
 
 export interface Shift {
@@ -51,11 +53,36 @@ export interface AttendanceRecord {
     worker_id: string;
     name: string;
     department?: string | null;
+    daily_salary?: number | null;
   } | null;
   shift?: {
     name: string;
     shift_code: string;
   } | null;
+}
+
+/** Payroll data frozen into a report at generation time. Keeps historical
+ * reports reproducible even if worker salaries change later. */
+export interface ReportSalarySnapshot {
+  month: string;
+  workingDays: number;
+  totalPayroll: number;
+  totalWorkers: number;
+  totalFullDays: number;
+  totalHalfDays: number;
+  totalAbsentDays: number;
+  workers: {
+    worker_id: string;
+    name: string;
+    department?: string | null;
+    daily_salary?: number | null;
+    shift1: number;
+    shift2: number;
+    fullDays: number;
+    halfDays: number;
+    absentDays: number;
+    earned: number | null;
+  }[];
 }
 
 export interface Report {
@@ -66,6 +93,8 @@ export interface Report {
   storage_path: string;
   generated_by?: string | null;
   generated_at: string;
+  payroll_total?: number | null;
+  salary_snapshot?: ReportSalarySnapshot | null;
 }
 
 export interface CompanySettings {

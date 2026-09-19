@@ -30,6 +30,7 @@ import {
 import {
   currentMonth,
   deleteWorker,
+  fetchMonthlyAttendanceRows,
   fetchWorkerByWorkerId,
   fetchWorkerMonthAttendance,
   monthLabel,
@@ -38,6 +39,7 @@ import {
 } from '@/lib/api';
 
 import { useAuth } from '@/lib/auth';
+import { formatRupees, getWorkerMonthlyPayroll } from '@/lib/salary';
 import type { Worker } from '@/lib/types';
 
 type ShiftFilter =
@@ -68,6 +70,19 @@ export default function WorkerDetailScreen() {
     Awaited<
       ReturnType<
         typeof fetchWorkerMonthAttendance
+      >
+    >
+  >([]);
+
+  /*
+   * Every worker's lightweight rows for the shown month. Used only to compute
+   * company-wide working days so the payroll card can show a correct "absent"
+   * figure for this worker.
+   */
+  const [companyRows, setCompanyRows] = useState<
+    Awaited<
+      ReturnType<
+        typeof fetchMonthlyAttendanceRows
       >
     >
   >([]);
@@ -175,13 +190,19 @@ export default function WorkerDetailScreen() {
       }
 
       try {
-        const attendance =
-          await fetchWorkerMonthAttendance(
-            currentWorker.id,
-            currentMonthValue,
-          );
+        const [attendance, monthRows] =
+          await Promise.all([
+            fetchWorkerMonthAttendance(
+              currentWorker.id,
+              currentMonthValue,
+            ),
+            fetchMonthlyAttendanceRows(
+              currentMonthValue,
+            ),
+          ]);
 
         setRecords(attendance);
+        setCompanyRows(monthRows);
       } catch (error) {
         console.error(
           'Failed to load attendance:',
@@ -355,6 +376,26 @@ export default function WorkerDetailScreen() {
         b.date.localeCompare(a.date),
       );
   }, [records, shiftFilter]);
+
+  /*
+   * =========================================================
+   * PAYROLL
+   * =========================================================
+   *
+   * Uses company-wide rows so "absent" is measured against
+   * the days anyone worked in the month.
+   */
+
+  const payroll = useMemo(
+    () =>
+      worker
+        ? getWorkerMonthlyPayroll(
+            worker,
+            companyRows,
+          )
+        : null,
+    [worker, companyRows],
+  );
 
   /*
    * =========================================================
@@ -862,6 +903,18 @@ export default function WorkerDetailScreen() {
         </View>
       </View>
 
+      <AppButton
+        title="Worker ID Card"
+        icon="id-card-outline"
+        variant="outline"
+        onPress={() =>
+          router.push(
+            `/workers/${worker.worker_id}/id-card`,
+          )
+        }
+        style={styles.idCardButton}
+      />
+
       {/* =====================================================
           ATTENDANCE HISTORY
       ====================================================== */}
@@ -1223,6 +1276,128 @@ export default function WorkerDetailScreen() {
       )}
 
       {/* =====================================================
+          PAYROLL
+      ====================================================== */}
+
+      {canManage ? (
+        <>
+          <SectionTitle
+            title="Payroll"
+            subtitle={`Earnings for ${monthLabel(month)}`}
+            action={
+              <Pressable
+                onPress={() =>
+                  router.push('/salary')
+                }
+                style={
+                  styles.fullHistoryButton
+                }
+                hitSlop={8}
+              >
+                <Text
+                  style={
+                    styles.fullHistoryButtonText
+                  }
+                >
+                  View all
+                </Text>
+
+                <Ionicons
+                  name="chevron-forward"
+                  size={15}
+                  color={Colors.primary}
+                />
+              </Pressable>
+            }
+          />
+
+          <View
+            style={styles.payrollCard}
+          >
+            <View
+              style={styles.payrollGrid}
+            >
+              <PayrollCell
+                label="DAILY SALARY"
+                value={
+                  payroll?.dailySalary != null
+                    ? formatRupees(
+                        payroll.dailySalary
+                      )
+                    : 'Not set'
+                }
+                valueColor={
+                  payroll?.dailySalary == null
+                    ? Colors.textMuted
+                    : undefined
+                }
+              />
+
+              <PayrollCell
+                label="FULL DAYS"
+                value={String(
+                  payroll?.fullDays ?? 0
+                )}
+              />
+
+              <PayrollCell
+                label="HALF DAYS"
+                value={String(
+                  payroll?.halfDays ?? 0
+                )}
+              />
+
+              <PayrollCell
+                label="ABSENT"
+                value={String(
+                  payroll?.absentDays ?? 0
+                )}
+              />
+            </View>
+
+            <View
+              style={
+                styles.payrollEarnedRow
+              }
+            >
+              <View>
+                <Text
+                  style={
+                    styles.payrollEarnedLabel
+                  }
+                >
+                  EARNED
+                </Text>
+
+                <Text
+                  style={
+                    styles.payrollEarnedValue
+                  }
+                >
+                  {payroll?.earned != null
+                    ? formatRupees(
+                        payroll.earned
+                      )
+                    : '—'}
+                </Text>
+              </View>
+
+              {payroll?.earned == null ? (
+                <Text
+                  style={
+                    styles.payrollEarnedHint
+                  }
+                >
+                  Set a daily salary for this
+                  worker to calculate earnings.
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        </>
+      ) : null}
+
+      {/* =====================================================
           MANAGEMENT
       ====================================================== */}
 
@@ -1384,6 +1559,25 @@ export default function WorkerDetailScreen() {
   );
 }
 
+function PayrollCell({
+  label,
+  value,
+  valueColor,
+}: {
+  label: string;
+  value: string;
+  valueColor?: string;
+}) {
+  return (
+    <View style={styles.payrollCell}>
+      <Text style={styles.payrollCellLabel}>{label}</Text>
+      <Text style={[styles.payrollCellValue, valueColor ? { color: valueColor } : null]}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   /*
    * LOADING
@@ -1440,6 +1634,11 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding:
       Spacing.lg,
+    marginBottom:
+      Spacing.xl,
+  },
+
+  idCardButton: {
     marginBottom:
       Spacing.xl,
   },
@@ -1953,6 +2152,104 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight:
       '800',
+  },
+
+  /*
+   * PAYROLL
+   */
+
+  payrollCard: {
+    backgroundColor:
+      Colors.card,
+    borderWidth: 1,
+    borderColor:
+      Colors.border,
+    borderRadius: 16,
+    padding:
+      Spacing.md,
+    marginBottom:
+      Spacing.md,
+  },
+
+  payrollGrid: {
+    flexDirection:
+      'row',
+    flexWrap:
+      'wrap',
+    rowGap:
+      Spacing.md,
+  },
+
+  payrollCell: {
+    width: '50%',
+    paddingRight:
+      Spacing.sm,
+  },
+
+  payrollCellLabel: {
+    fontSize: 9,
+    fontWeight:
+      '800',
+    letterSpacing:
+      0.8,
+    color:
+      Colors.textMuted,
+    marginBottom: 3,
+  },
+
+  payrollCellValue: {
+    fontSize:
+      FontSizes.md,
+    fontWeight:
+      '800',
+    color:
+      Colors.text,
+  },
+
+  payrollEarnedRow: {
+    flexDirection:
+      'row',
+    alignItems:
+      'flex-end',
+    justifyContent:
+      'space-between',
+    marginTop:
+      Spacing.lg,
+    paddingTop:
+      Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor:
+      Colors.border,
+  },
+
+  payrollEarnedLabel: {
+    fontSize: 9,
+    fontWeight:
+      '800',
+    letterSpacing:
+      0.8,
+    color:
+      Colors.textMuted,
+    marginBottom: 3,
+  },
+
+  payrollEarnedValue: {
+    fontSize: 24,
+    fontWeight:
+      '800',
+    color:
+      Colors.primary,
+  },
+
+  payrollEarnedHint: {
+    flexShrink: 1,
+    maxWidth: 180,
+    textAlign: 'right',
+    fontSize: 10,
+    lineHeight: 14,
+    color:
+      Colors.textMuted,
+    marginBottom: 2,
   },
 
   /*

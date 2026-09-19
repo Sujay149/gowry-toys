@@ -436,6 +436,29 @@ function ReportCard({
                 {generatedDate}
               </Text>
             </View>
+
+            {report.payroll_total != null ? (
+              <>
+                <View style={styles.metaDot} />
+
+                <View style={styles.metaItem}>
+                  <Ionicons
+                    name="cash-outline"
+                    size={12}
+                    color={Colors.successDark}
+                  />
+
+                  <Text style={styles.metaText}>
+                    ₹
+                    {report.payroll_total.toLocaleString(
+                      'en-IN'
+                    )}
+                    {' '}
+                    payroll
+                  </Text>
+                </View>
+              </>
+            ) : null}
           </View>
         </View>
 

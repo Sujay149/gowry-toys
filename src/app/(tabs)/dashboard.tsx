@@ -40,6 +40,7 @@ import {
 } from '@/lib/api';
 
 import { useAuth } from '@/lib/auth';
+import { formatRupees, summarizeDayPayroll } from '@/lib/salary';
 import type {
   AttendanceRecord,
   Worker,
@@ -52,6 +53,7 @@ export default function DashboardScreen() {
 
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [workerCount, setWorkerCount] = useState<number>(0);
+  const [workersList, setWorkersList] = useState<Worker[]>([]);
   const [companyName, setCompanyName] =
     useState('Gowri Toys');
 
@@ -86,6 +88,8 @@ export default function DashboardScreen() {
       setRecords(attendance);
 
       setWorkerCount(workers.length);
+
+      setWorkersList(workers);
 
       if (settings?.company_name) {
         setCompanyName(
@@ -133,6 +137,15 @@ export default function DashboardScreen() {
   const summary = useMemo(
     () => summarizeToday(records),
     [records]
+  );
+
+  /* ---------------------------------------------------------------------- */
+  /* DAY PAYROLL (ADMIN ONLY)                                               */
+  /* ---------------------------------------------------------------------- */
+
+  const dayPayroll = useMemo(
+    () => summarizeDayPayroll(workersList, records),
+    [workersList, records]
   );
 
   /* ---------------------------------------------------------------------- */
@@ -536,6 +549,80 @@ export default function DashboardScreen() {
           />
         </View>
       </FadeInView>
+
+      {/* ================================================================== */}
+      {/* TODAY'S PAYROLL (ADMIN ONLY)                                       */}
+      {/* ================================================================== */}
+
+      {isAdmin ? (
+        <FadeInView delay={200}>
+          <Pressable
+            style={styles.payrollStrip}
+            onPress={() =>
+              router.push('/salary')
+            }
+          >
+            <View
+              style={styles.payrollIcon}
+            >
+              <Ionicons
+                name="cash-outline"
+                size={19}
+                color={Colors.successDark}
+              />
+            </View>
+
+            <View
+              style={styles.payrollBody}
+            >
+              <Text
+                style={styles.payrollLabel}
+              >
+                {'TODAY\u0027S PAYROLL'}
+              </Text>
+
+              <Text
+                style={styles.payrollValue}
+              >
+                {formatRupees(
+                  dayPayroll.totalPayroll
+                )}
+
+                <Text
+                  style={
+                    styles.payrollSub
+                  }
+                >
+                  {' '}
+                  · {dayPayroll.present}{' '}
+                  present
+                </Text>
+              </Text>
+
+              {dayPayroll.unconfiguredPresent >
+              0 ? (
+                <Text
+                  style={
+                    styles.payrollHint
+                  }
+                >
+                  {
+                    dayPayroll
+                      .unconfiguredPresent
+                  }{' '}
+                  present without a salary
+                </Text>
+              ) : null}
+            </View>
+
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={Colors.textMuted}
+            />
+          </Pressable>
+        </FadeInView>
+      ) : null}
 
       {/* ================================================================== */}
       {/* RECENT ATTENDANCE                                                  */}
@@ -1070,6 +1157,94 @@ const styles = StyleSheet.create({
     lineHeight: 15,
 
     color: Colors.textMuted,
+
+    marginTop: 2,
+  },
+
+  /* ---------------------------------------------------------------------- */
+  /* PAYROLL STRIP                                                          */
+  /* ---------------------------------------------------------------------- */
+
+  payrollStrip: {
+    flexDirection: 'row',
+
+    alignItems: 'center',
+
+    backgroundColor:
+      Colors.successLight,
+
+    borderWidth: 1,
+
+    borderColor:
+      Colors.successLight,
+
+    borderRadius: 16,
+
+    padding: 14,
+
+    marginTop: Spacing.md,
+  },
+
+  payrollIcon: {
+    width: 38,
+
+    height: 38,
+
+    borderRadius: 12,
+
+    backgroundColor:
+      Colors.card,
+
+    alignItems: 'center',
+
+    justifyContent: 'center',
+  },
+
+  payrollBody: {
+    flex: 1,
+
+    marginHorizontal: 11,
+  },
+
+  payrollLabel: {
+    fontSize: 9,
+
+    letterSpacing: 0.7,
+
+    fontWeight:
+      FontWeights.bold,
+
+    color:
+      Colors.successDark,
+  },
+
+  payrollValue: {
+    fontSize: 18,
+
+    fontWeight:
+      FontWeights.heavy,
+
+    color: Colors.text,
+
+    marginTop: 2,
+
+    fontVariant: ['tabular-nums'],
+  },
+
+  payrollSub: {
+    fontSize: 11,
+
+    fontWeight:
+      FontWeights.semibold,
+
+    color: Colors.textMuted,
+  },
+
+  payrollHint: {
+    fontSize: 10,
+
+    color:
+      Colors.successDark,
 
     marginTop: 2,
   },

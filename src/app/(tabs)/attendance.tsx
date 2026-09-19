@@ -45,8 +45,12 @@ import {
 } from '@/lib/api';
 
 import type { AttendanceRecord, Shift, Worker } from '@/lib/types';
+import { useAuth } from '@/lib/auth';
+import { formatRupees, summarizeDayPayroll } from '@/lib/salary';
 
 export default function AttendanceScreen() {
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
   const [date, setDate] = useState<string>(todayString());
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -117,6 +121,8 @@ export default function AttendanceScreen() {
   }, [records, shiftFilter, deptFilter, query]);
 
   const summary = summarizeToday(filtered);
+
+  const dayPayroll = summarizeDayPayroll(workers, records);
 
   const attendancePercentage =
     workers.length > 0
@@ -285,6 +291,56 @@ export default function AttendanceScreen() {
           background={Colors.primaryLight}
         />
       </View>
+
+      {/* ───────────────── DAY PAYROLL (ADMIN ONLY) ───────────────── */}
+
+      {isAdmin ? (
+        <FadeInView delay={100}>
+          <Pressable
+            style={styles.payrollCard}
+            onPress={() =>
+              router.push('/salary')
+            }
+          >
+            <View style={styles.payrollIcon}>
+              <Ionicons
+                name="cash-outline"
+                size={18}
+                color={Colors.successDark}
+              />
+            </View>
+
+            <View style={styles.payrollBody}>
+              <Text style={styles.payrollLabel}>
+                DAY PAYROLL
+              </Text>
+
+              <Text style={styles.payrollValue}>
+                {formatRupees(dayPayroll.totalPayroll)}
+
+                <Text style={styles.payrollSub}>
+                  {' '}
+                  · {dayPayroll.fullDay} full ·{' '}
+                  {dayPayroll.halfDay} half
+                </Text>
+              </Text>
+
+              {dayPayroll.unconfiguredPresent > 0 ? (
+                <Text style={styles.payrollHint}>
+                  {dayPayroll.unconfiguredPresent}{' '}
+                  present without a salary
+                </Text>
+              ) : null}
+            </View>
+
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={Colors.textMuted}
+            />
+          </Pressable>
+        </FadeInView>
+      ) : null}
 
       {/* ───────────────── SEARCH ───────────────── */}
       <FadeInView delay={120}>
@@ -888,6 +944,60 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
+  },
+
+  /* Day payroll */
+
+  payrollCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.successLight,
+    borderWidth: 1,
+    borderColor: Colors.successLight,
+  },
+
+  payrollIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: Colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  payrollBody: {
+    flex: 1,
+    marginHorizontal: Spacing.sm,
+  },
+
+  payrollLabel: {
+    fontSize: 9,
+    letterSpacing: 0.8,
+    fontWeight: '800',
+    color: Colors.successDark,
+  },
+
+  payrollValue: {
+    marginTop: 2,
+    fontSize: 17,
+    fontWeight: '800',
+    color: Colors.text,
+    fontVariant: ['tabular-nums'],
+  },
+
+  payrollSub: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
+
+  payrollHint: {
+    marginTop: 2,
+    fontSize: 10,
+    color: Colors.successDark,
   },
 
   /* Search */

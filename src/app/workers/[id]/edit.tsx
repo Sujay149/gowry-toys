@@ -13,6 +13,7 @@ import {
   uploadWorkerAvatar,
 } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { formatRupees, isInvalidSalaryInput, parseSalaryInput } from '@/lib/salary';
 import type { Worker } from '@/lib/types';
 
 export default function EditWorkerScreen() {
@@ -24,6 +25,7 @@ export default function EditWorkerScreen() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [department, setDepartment] = useState('');
+  const [dailySalaryText, setDailySalaryText] = useState('');
   const [photo, setPhoto] = useState<{ uri: string; base64?: string | null; mimeType?: string | null } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,9 +37,11 @@ export default function EditWorkerScreen() {
       setName(w.name);
       setPhone(w.phone ?? '');
       setDepartment(w.department ?? '');
+      setDailySalaryText(w.daily_salary != null ? String(w.daily_salary) : '');
     });
   }, [id]);
 
+  const isAdmin = profile?.role === 'admin';
   const canManage = profile?.role === 'admin' || profile?.role === 'supervisor';
 
   useEffect(() => {
@@ -73,14 +77,22 @@ export default function EditWorkerScreen() {
       setError('Worker name is required.');
       return;
     }
+    if (isAdmin && isInvalidSalaryInput(dailySalaryText)) {
+      setError('Enter a valid daily salary (a number, 0 or more).');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      await updateWorker(worker.id, {
+      const patch: Parameters<typeof updateWorker>[1] = {
         name: name.trim(),
         phone: phone.trim() || undefined,
         department: department.trim() || undefined,
-      });
+      };
+      if (isAdmin) {
+        patch.daily_salary = parseSalaryInput(dailySalaryText);
+      }
+      await updateWorker(worker.id, patch);
       if (photo) {
         const avatarUrl = await uploadWorkerAvatar(worker.id, photo);
         await updateWorker(worker.id, { avatar_url: avatarUrl });
@@ -134,6 +146,23 @@ export default function EditWorkerScreen() {
       <TextField label="Full Name *" icon="person-outline" value={name} onChangeText={setName} />
       <TextField label="Phone" icon="call-outline" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
       <TextField label="Department" icon="business-outline" value={department} onChangeText={setDepartment} />
+
+      {isAdmin ? (
+        <TextField
+          label="Daily Salary (₹)"
+          icon="cash-outline"
+          value={dailySalaryText}
+          onChangeText={setDailySalaryText}
+          keyboardType="numeric"
+          placeholder="e.g. 400"
+          error={isInvalidSalaryInput(dailySalaryText) ? 'Enter a valid amount (0 or more).' : undefined}
+          hint={
+            worker?.daily_salary != null
+              ? `Configured: ${formatRupees(worker.daily_salary)} per full day`
+              : 'Not configured — salary rules are applied once set.'
+          }
+        />
+      ) : null}
 
       <AppButton title="Save Changes" onPress={handleSave} loading={saving} size="lg" icon="save-outline" />
     </Screen>

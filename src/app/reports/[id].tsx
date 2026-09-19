@@ -51,7 +51,23 @@ export default function ReportDetailScreen() {
             timeStyle: 'short',
           })
         )}
+        {report.payroll_total != null
+          ? row('Payroll total', `₹${report.payroll_total.toLocaleString('en-IN')}`)
+          : null}
       </Card>
+
+      {report.salary_snapshot ? (
+        <>
+          <SectionTitle title="Payroll snapshot" subtitle="Frozen at generation time" />
+          <Card style={styles.detailCard}>
+            {row('Working days', `${report.salary_snapshot.workingDays}`)}
+            {row('Total workers', `${report.salary_snapshot.totalWorkers}`)}
+            {row('Full days', `${report.salary_snapshot.totalFullDays}`)}
+            {row('Half days', `${report.salary_snapshot.totalHalfDays}`)}
+            {row('Absent days', `${report.salary_snapshot.totalAbsentDays}`)}
+          </Card>
+        </>
+      ) : null}
 
       <AppButton
         title="Download PDF"
