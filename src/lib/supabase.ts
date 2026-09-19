@@ -39,6 +39,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 export const REPORTS_BUCKET = 'attendance-reports';
+export const AVATARS_BUCKET = 'avatars';
 export const FUNCTIONS = {
   markAttendance: 'mark-attendance',
   generateMonthlyReport: 'generate-monthly-report',

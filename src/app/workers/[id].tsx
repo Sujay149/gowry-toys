@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import {
   router,
   useFocusEffect,
@@ -620,15 +621,23 @@ export default function WorkerDetailScreen() {
           <View
             style={styles.avatar}
           >
-            <Text
-              style={
-                styles.avatarText
-              }
-            >
-              {getInitials(
-                worker.name,
-              )}
-            </Text>
+            {worker.avatar_url ? (
+              <Image
+                source={{ uri: worker.avatar_url }}
+                style={styles.avatarImage}
+                contentFit="cover"
+              />
+            ) : (
+              <Text
+                style={
+                  styles.avatarText
+                }
+              >
+                {getInitials(
+                  worker.name,
+                )}
+              </Text>
+            )}
           </View>
 
           <View
@@ -1452,6 +1461,14 @@ const styles = StyleSheet.create({
       'center',
     justifyContent:
       'center',
+    marginRight:
+      Spacing.md,
+  },
+
+  avatarImage: {
+    width: 62,
+    height: 62,
+    borderRadius: 20,
     marginRight:
       Spacing.md,
   },

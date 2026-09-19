@@ -107,7 +107,7 @@ export default function WorkersScreen() {
           }
           renderItem={({ item }) => (
             <Pressable style={({ pressed }) => [styles.worker, pressed && { opacity: 0.8 }]} onPress={() => router.push(`/workers/${item.worker_id}`)}>
-              <Avatar name={item.name} />
+              <Avatar name={item.name} source={item.avatar_url ?? null} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.workerName}>{item.name}</Text>
                 <Text style={styles.workerId}>

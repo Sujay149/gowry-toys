@@ -29,6 +29,7 @@ create table if not exists public.workers (
   department text,
   designation text,
   joining_date date,
+  avatar_url text,
   active boolean not null default true,
   deleted_at timestamptz,
   created_at timestamptz not null default now(),
@@ -37,6 +38,9 @@ create table if not exists public.workers (
 
 -- Idempotent guard for databases created before soft-delete support.
 alter table if exists public.workers add column if not exists deleted_at timestamptz;
+
+-- Idempotent guard for databases created before profile-photo support.
+alter table if exists public.workers add column if not exists avatar_url text;
 
 -- ---------------------------------------------------------------------------
 -- Shifts
@@ -296,11 +300,25 @@ create policy "attendance_reports_select_authenticated"
 on storage.objects for select
 using (bucket_id = 'attendance-reports' and auth.role() = 'authenticated');
 
+drop policy if exists "avatars_select_authenticated" on storage.objects;
+create policy "avatars_select_authenticated"
+on storage.objects for select
+using (bucket_id = 'avatars' and auth.role() = 'authenticated');
+
+drop policy if exists "avatars_insert_authenticated" on storage.objects;
+create policy "avatars_insert_authenticated"
+on storage.objects for insert
+with check (bucket_id = 'avatars' and public.current_user_role() in ('admin', 'supervisor'));
+
 -- ---------------------------------------------------------------------------
 -- Storage bucket
 -- ---------------------------------------------------------------------------
 insert into storage.buckets (id, name, public)
 values ('attendance-reports', 'attendance-reports', false)
+on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
 on conflict (id) do nothing;
 
 -- ---------------------------------------------------------------------------

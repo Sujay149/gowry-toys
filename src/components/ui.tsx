@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
@@ -500,13 +501,26 @@ export function Avatar({
   background = Colors.primaryLight,
   color = Colors.primary,
   icon,
+  source,
 }: {
   name?: string;
   size?: number;
   background?: string;
   color?: string;
   icon?: IconName;
+  /** Remote image URL to render instead of initials. */
+  source?: string | null;
 }) {
+  if (source) {
+    return (
+      <Image
+        source={{ uri: source }}
+        style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: background }}
+        contentFit="cover"
+      />
+    );
+  }
+
   const initials = (name ?? '')
     .trim()
     .split(' ')

@@ -37,6 +37,12 @@
         }
       ],
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Gowri Toys uses your photo library to set a profile photo for a worker."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#4F46E5",

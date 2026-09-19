@@ -17,6 +17,7 @@ export interface Worker {
   department?: string | null;
   designation?: string | null;
   joining_date?: string | null;
+  avatar_url?: string | null;
   active: boolean;
   created_at: string;
 }
@@ -27,6 +28,7 @@ export interface WorkerInput {
   department?: string;
   designation?: string;
   joining_date?: string;
+  avatar_url?: string | null;
 }
 
 export interface Shift {

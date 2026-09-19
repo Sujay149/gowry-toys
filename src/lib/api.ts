@@ -1,4 +1,4 @@
-import { supabase, FUNCTIONS, REPORTS_BUCKET } from '@/lib/supabase';
+import { supabase, FUNCTIONS, REPORTS_BUCKET, AVATARS_BUCKET } from '@/lib/supabase';
 import type {
   ApiError,
   AttendanceRecord,
@@ -66,9 +66,18 @@ export async function createWorker(input: WorkerInput): Promise<Worker> {
   return data as Worker;
 }
 
-export async function updateWorker(id: string, patch: Partial<WorkerInput> & { active?: boolean }) {
-  const { error } = await supabase.from('workers').update(patch).eq('id', id);
+export async function updateWorker(
+  id: string,
+  patch: Partial<WorkerInput> & { active?: boolean }
+): Promise<Worker | null> {
+  const { data, error } = await supabase
+    .from('workers')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .maybeSingle();
   if (error) throw error;
+  return (data as Worker) ?? null;
 }
 
 // Soft delete: the worker row is kept (so all attendance records and reports
@@ -80,6 +89,65 @@ export async function deleteWorker(id: string) {
     .update({ active: false, deleted_at: new Date().toISOString() })
     .eq('id', id);
   if (error) throw error;
+}
+
+export interface AvatarUpload {
+  uri: string;
+  base64?: string | null;
+  mimeType?: string | null;
+}
+
+function decodeBase64(b64: string): Uint8Array {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  const lookup: Record<string, number> = Object.create(null);
+  for (let i = 0; i < chars.length; i++) lookup[chars[i]] = i;
+  const clean = b64.replace(/=+$/, '');
+  const bytes: number[] = [];
+  let buffer = 0;
+  let bits = 0;
+  for (const ch of clean) {
+    const v = lookup[ch];
+    if (v === undefined) continue;
+    buffer = (buffer << 6) | v;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      bytes.push((buffer >> bits) & 0xff);
+    }
+  }
+  return Uint8Array.from(bytes);
+}
+
+// Uploads a picked profile photo into the public avatars bucket and returns its
+// public URL. The file is stored under a unique versioned path, so replacing a
+// photo always produces a fresh URL and never serves a stale cached image.
+export async function uploadWorkerAvatar(workerId: string, photo: AvatarUpload): Promise<string> {
+  const contentType = photo.mimeType || 'image/jpeg';
+  const ext = photo.mimeType === 'image/png' ? 'png' : 'jpg';
+  const path = `workers/${workerId}/${Date.now()}.${ext}`;
+  const body: string | Uint8Array =
+    typeof photo.base64 === 'string' && photo.base64.length > 0
+      ? decodeBase64(photo.base64)
+      : await fetch(photo.uri)
+          .then((r) => r.arrayBuffer())
+          .then((ab) => new Uint8Array(ab));
+  const { error } = await supabase.storage.from(AVATARS_BUCKET).upload(path, body, { contentType });
+  if (error) throw error;
+
+  // Remove previous photo versions for this worker (best-effort).
+  try {
+    const { data: listed } = await supabase.storage.from(AVATARS_BUCKET).list(`workers/${workerId}`);
+    const stale = (listed ?? [])
+      .filter((f) => f.name !== `${Date.now().toString()}.${ext}` && f.name.endsWith(`.${ext}`))
+      .map((f) => `workers/${workerId}/${f.name}`);
+    if (stale.length > 0) {
+      await supabase.storage.from(AVATARS_BUCKET).remove(stale);
+    }
+  } catch {
+    // Cleanup is best-effort.
+  }
+
+  return supabase.storage.from(AVATARS_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
 // ---------- Profiles (admin only) ----------
